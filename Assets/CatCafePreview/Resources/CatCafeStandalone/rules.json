@@ -352,15 +352,15 @@
   "goal_stages": [
     {
       "days": 20,
-      "target": 250
+      "target": 230
     },
     {
       "days": 20,
-      "target": 450
+      "target": 370
     },
     {
       "days": 25,
-      "target": 650
+      "target": 550
     }
   ],
   "advanced_customer": {
@@ -1134,5 +1134,5 @@
       "daily_cost": 160
     }
   ],
-  "rules_id": "56d73eb672afed45e103cf604cd53863f65fd335759c90bcfa2744f4ae255a24"
+  "rules_id": "b5aacfe93123f4e8eedc345aac26dcefa0bd11ea26bb5050801f96cf1deff993"
 }
