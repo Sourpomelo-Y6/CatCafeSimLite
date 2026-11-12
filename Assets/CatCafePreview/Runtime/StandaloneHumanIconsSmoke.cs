@@ -1,0 +1,331 @@
+using System;
+using System.IO;
+using System.Linq;
+using System.Collections;
+using System.Reflection;
+using UnityEngine;
+using UnityEngine.UI;
+using UnityEngine.SceneManagement;
+using CatCafePreview.Standalone;
+namespace CatCafePreview {
+ public sealed class StandaloneHumanIconsSmoke:MonoBehaviour {
+  string output;int checks;static readonly BindingFlags Hidden=BindingFlags.Instance|BindingFlags.NonPublic;
+  void Check(bool value,string label){checks++;if(!value)throw new Exception(label);}
+  [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]static void Install(){var a=Environment.GetCommandLineArgs();int i=Array.IndexOf(a,"--catcafe-human-icons");if(i<0)return;var q=new GameObject("Human icons QA").AddComponent<StandaloneHumanIconsSmoke>();DontDestroyOnLoad(q);q.output=Path.GetFullPath(a[i+1]);Directory.CreateDirectory(q.output);Application.runInBackground=true;q.StartCoroutine(q.Guard());}
+  IEnumerator Guard(){var work=Run();while(true){bool more;try{more=work.MoveNext();}catch(Exception e){File.WriteAllText(Path.Combine(output,"failure.txt"),e.ToString());Debug.LogException(e);Application.Quit(1);yield break;}if(!more)break;yield return work.Current;}File.WriteAllText(Path.Combine(output,Environment.GetCommandLineArgs().Contains("--catcafe-human-icons-resume")?"manual-result.txt":"result.txt"),"PASS: "+checks+" checks. Actual Player UI with isolated view/event/replay fixtures; no natural event or physical input claim.");Application.Quit(0);}
+  void Apply(PythonStateClient client,PythonCafeState view){typeof(PythonStateClient).GetMethod("Accept",Hidden).Invoke(client,new object[]{view});Canvas.ForceUpdateCanvases();}
+  void Send(LocalCafeBackend b,string kind,string choice=null){var state=b.Simulation.State;CafeResponse response=null;var cmd=new PythonShiftCommand{kind=kind,choice=choice,request_id=Guid.NewGuid().ToString("N"),instance_id=state.instance_id,expected_revision=state.revision,save_id="1",save_slot=1,working_cats=new string[0]};var work=b.Request("/commands",JsonUtility.ToJson(cmd),r=>response=r);while(work.MoveNext()){}Check(response!=null && response.result==UnityEngine.Networking.UnityWebRequest.Result.Success,kind+": "+response?.error);}
+  IEnumerator Shot(string name){yield return new WaitForEndOfFrame();ScreenCapture.CaptureScreenshot(Path.Combine(output,name+".png"));yield return null;}
+  // Resolve optional preparation requests only in the isolated Yoshida fixture.
+  static void PrepareYoshidaFixture(CafeSimulation simulation){
+   foreach(var e in simulation.State.trust_events.Where(e=>e.status=="waiting").ToArray())simulation.Execute("resolve_customer_trust",source:e.id,choice:"recover");
+   if(simulation.ReservationWaiting)simulation.Execute("resolve_reservation",choice:"decline");
+   if(simulation.StoreEventWaiting)simulation.Execute("resolve_store_event",choice:simulation.CurrentStoreEvent.type=="trouble"?"patch":"decline");
+   if(simulation.IntakeWaiting)simulation.Execute("resolve_intake",choice:"decline");
+   if(simulation.RegularIntroductionWaiting)simulation.Execute("resolve_regular_introduction",choice:"decline");
+  }
+  static void PrepareFujitaFixture(CafeSimulation sim){
+   foreach(var c in sim.State.cats.Where(c=>c.activity=="missing" && c.missing_remaining==0 && !sim.DispatchMissing(sim.State,c.id)).ToArray())sim.Execute("resolve_missing",catId:c.id);
+   PrepareYoshidaFixture(sim);
+   if(sim.State.phase=="preparation" && !sim.GoalWaiting){
+    for(int rest=0;rest<5 && !sim.State.cats.Any(c=>c.health=="healthy" && c.activity=="cafe");rest++){
+     sim.Execute("day_off");while(sim.GrowthWaiting){sim.Execute("resolve_growth_auto");sim.Execute("resolve_growth_batch");}
+     foreach(var c in sim.State.cats.Where(c=>c.activity=="missing" && c.missing_remaining==0 && !sim.DispatchMissing(sim.State,c.id)).ToArray())sim.Execute("resolve_missing",catId:c.id);
+     PrepareYoshidaFixture(sim);if(sim.State.phase=="closed")sim.Execute("next_day");PrepareYoshidaFixture(sim);
+    }
+    sim.Execute("set_shifts",working:sim.State.cats.Where(c=>c.health=="healthy" && c.activity=="cafe").Select(c=>c.id).ToArray());
+   }
+  }
+  IEnumerator Run(){
+   bool ueda=Environment.GetCommandLineArgs().Contains("--catcafe-ueda");bool ishida=ueda||Environment.GetCommandLineArgs().Contains("--catcafe-ishida");bool fujita=ishida||Environment.GetCommandLineArgs().Contains("--catcafe-fujita");bool maeda=Environment.GetCommandLineArgs().Contains("--catcafe-maeda");bool okada=Environment.GetCommandLineArgs().Contains("--catcafe-okada");bool gotoCustomer=Environment.GetCommandLineArgs().Contains("--catcafe-goto");bool aoki=Environment.GetCommandLineArgs().Contains("--catcafe-aoki");bool nishimura=Environment.GetCommandLineArgs().Contains("--catcafe-nishimura");bool fukuda=Environment.GetCommandLineArgs().Contains("--catcafe-fukuda");bool sakamoto=Environment.GetCommandLineArgs().Contains("--catcafe-sakamoto");bool fujiwara=Environment.GetCommandLineArgs().Contains("--catcafe-fujiwara");bool yamada=Environment.GetCommandLineArgs().Contains("--catcafe-yamada");bool yoshida=Environment.GetCommandLineArgs().Contains("--catcafe-yoshida");bool kato=Environment.GetCommandLineArgs().Contains("--catcafe-kato");bool kobayashi=Environment.GetCommandLineArgs().Contains("--catcafe-kobayashi");bool nakamura=Environment.GetCommandLineArgs().Contains("--catcafe-nakamura");bool yamamoto=Environment.GetCommandLineArgs().Contains("--catcafe-yamamoto");bool watanabe=Environment.GetCommandLineArgs().Contains("--catcafe-watanabe");bool ito=Environment.GetCommandLineArgs().Contains("--catcafe-ito");bool tanaka=Environment.GetCommandLineArgs().Contains("--catcafe-tanaka");bool takahashi=Environment.GetCommandLineArgs().Contains("--catcafe-takahashi");string target=ueda?"expanded-guest-5":ishida?"expanded-guest-4":fujita?"expanded-guest-3":maeda?"expanded-guest-2":okada?"expanded-guest":gotoCustomer?"vip-calico":aoki?"advanced-contact":nishimura?"advanced-play":fukuda?"advanced-quiet":sakamoto?"advanced-longhair":fujiwara?"advanced-white":yamada?"guest-12":yoshida?"guest-11":kato?"guest-10":kobayashi?"guest-9":nakamura?"guest-8":yamamoto?"guest-7":watanabe?"guest-6":ito?"guest-5":tanaka?"guest-4":takahashi?"guest-3":"guest-2";var ids=ueda?new[]{"guest-1","guest-2","reservation-longhair","guest-3","guest-4","guest-5","guest-6","guest-7","guest-8","guest-9","guest-10","guest-11","guest-12","advanced-white","advanced-longhair","advanced-quiet","advanced-play","advanced-contact","vip-calico","expanded-guest","expanded-guest-2","expanded-guest-3","expanded-guest-4","expanded-guest-5"}:ishida?new[]{"guest-1","guest-2","reservation-longhair","guest-3","guest-4","guest-5","guest-6","guest-7","guest-8","guest-9","guest-10","guest-11","guest-12","advanced-white","advanced-longhair","advanced-quiet","advanced-play","advanced-contact","vip-calico","expanded-guest","expanded-guest-2","expanded-guest-3","expanded-guest-4"}:fujita?new[]{"guest-1","guest-2","reservation-longhair","guest-3","guest-4","guest-5","guest-6","guest-7","guest-8","guest-9","guest-10","guest-11","guest-12","advanced-white","advanced-longhair","advanced-quiet","advanced-play","advanced-contact","vip-calico","expanded-guest","expanded-guest-2","expanded-guest-3"}:maeda?new[]{"guest-1","guest-2","reservation-longhair","guest-3","guest-4","guest-5","guest-6","guest-7","guest-8","guest-9","guest-10","guest-11","guest-12","advanced-white","advanced-longhair","advanced-quiet","advanced-play","advanced-contact","vip-calico","expanded-guest","expanded-guest-2"}:okada?new[]{"guest-1","guest-2","reservation-longhair","guest-3","guest-4","guest-5","guest-6","guest-7","guest-8","guest-9","guest-10","guest-11","guest-12","advanced-white","advanced-longhair","advanced-quiet","advanced-play","advanced-contact","vip-calico","expanded-guest"}:gotoCustomer?new[]{"guest-1","guest-2","reservation-longhair","guest-3","guest-4","guest-5","guest-6","guest-7","guest-8","guest-9","guest-10","guest-11","guest-12","advanced-white","advanced-longhair","advanced-quiet","advanced-play","advanced-contact","vip-calico"}:aoki?new[]{"guest-1","guest-2","reservation-longhair","guest-3","guest-4","guest-5","guest-6","guest-7","guest-8","guest-9","guest-10","guest-11","guest-12","advanced-white","advanced-longhair","advanced-quiet","advanced-play","advanced-contact"}:nishimura?new[]{"guest-1","guest-2","reservation-longhair","guest-3","guest-4","guest-5","guest-6","guest-7","guest-8","guest-9","guest-10","guest-11","guest-12","advanced-white","advanced-longhair","advanced-quiet","advanced-play"}:fukuda?new[]{"guest-1","guest-2","reservation-longhair","guest-3","guest-4","guest-5","guest-6","guest-7","guest-8","guest-9","guest-10","guest-11","guest-12","advanced-white","advanced-longhair","advanced-quiet"}:sakamoto?new[]{"guest-1","guest-2","reservation-longhair","guest-3","guest-4","guest-5","guest-6","guest-7","guest-8","guest-9","guest-10","guest-11","guest-12","advanced-white","advanced-longhair"}:fujiwara?new[]{"guest-1","guest-2","reservation-longhair","guest-3","guest-4","guest-5","guest-6","guest-7","guest-8","guest-9","guest-10","guest-11","guest-12","advanced-white"}:yamada?new[]{"guest-1","guest-2","reservation-longhair","guest-3","guest-4","guest-5","guest-6","guest-7","guest-8","guest-9","guest-10","guest-11","guest-12"}:yoshida?new[]{"guest-1","guest-2","reservation-longhair","guest-3","guest-4","guest-5","guest-6","guest-7","guest-8","guest-9","guest-10","guest-11"}:kato?new[]{"guest-1","guest-2","reservation-longhair","guest-3","guest-4","guest-5","guest-6","guest-7","guest-8","guest-9","guest-10"}:kobayashi?new[]{"guest-1","guest-2","reservation-longhair","guest-3","guest-4","guest-5","guest-6","guest-7","guest-8","guest-9"}:nakamura?new[]{"guest-1","guest-2","reservation-longhair","guest-3","guest-4","guest-5","guest-6","guest-7","guest-8"}:yamamoto?new[]{"guest-1","guest-2","reservation-longhair","guest-3","guest-4","guest-5","guest-6","guest-7"}:watanabe?new[]{"guest-1","guest-2","reservation-longhair","guest-3","guest-4","guest-5","guest-6"}:ito?new[]{"guest-1","guest-2","reservation-longhair","guest-3","guest-4","guest-5"}:tanaka?new[]{"guest-1","guest-2","reservation-longhair","guest-3","guest-4"}:takahashi?new[]{"guest-1","guest-2","reservation-longhair","guest-3"}:new[]{"guest-1","guest-2","reservation-longhair"};var textures=ids.Select(HumanPortraitResources.Resolve).ToArray();Check(textures.All(t=>t!=null && t!=HumanPortraitResources.Placeholder()),"Missing customer icon");Check(textures.Distinct().Count()==ids.Length,"Customer identities share image");Check(HumanPortraitResources.Resolve("unknown")==HumanPortraitResources.Placeholder(),"Unknown customer");
+   if(Environment.GetCommandLineArgs().Contains("--catcafe-human-icons-resume")){
+    var loaded=new LocalCafeBackend(Path.Combine(output,"save"));Send(loaded,"load_game");CafeBackends.UseLocal(loaded);
+    Check(loaded.View().seats.Any(s=>s.customer_id==target),"Separate process resumed target customer");
+    File.WriteAllText(Path.Combine(output,"resumed.json"),JsonUtility.ToJson(loaded.View(),true));
+    SceneManager.LoadScene("CatCafePythonState");yield return new WaitForSecondsRealtime(2);
+    var manualClient=FindObjectOfType<PythonStateClient>();Apply(manualClient,loaded.View());manualClient.GetComponent<PythonServiceScreen>().ShowSeats();
+    Screen.SetResolution(1024,768,false);yield return new WaitForSecondsRealtime(.5f);
+    File.WriteAllText(Path.Combine(output,"manual-ready.txt"),"Separate process load_game: target seated; waiting for input review.");
+    while(!File.Exists(Path.Combine(output,"manual-done.txt")))yield return null;
+    yield return Shot("manual-after-input-1024");yield break;
+   }
+   var backend=new LocalCafeBackend(Path.Combine(output,"save"));CafeBackends.UseLocal(backend);
+   if(fujiwara){
+    var sim=backend.Simulation;
+    sim.Execute("start_popularity_challenge");
+    Check(!sim.CustomerSchedule(1).Any(a=>a.customer_id==target),"Fujiwara locked before first clear");
+    // Only popularity is seeded in this isolated unlock fixture. Production goal rules remain intact.
+    sim.State.popularity=sim.Rules.popularity.cap;sim.Execute("day_off");
+    Check(sim.ClearedGoalDay(1)==1,"First stage settled by normal day_off");
+    Check(!sim.CustomerSchedule(1).Any(a=>a.customer_id==target),"Fujiwara absent on clear day");
+    while(sim.GrowthWaiting){sim.Execute("resolve_growth_auto");sim.Execute("resolve_growth_batch");}
+    sim.Execute("continue_goal");if(sim.State.phase=="closed")sim.Execute("next_day");PrepareYoshidaFixture(sim);
+    Check(sim.CustomerSchedule(sim.State.day).Single(a=>a.customer_id==target).tick==0,"Fujiwara arrives next day at opening tick zero");
+    Check(sim.Rules.advanced_customer.feature=="white" && sim.Rules.advanced_customer.connect_count==1 && sim.Rules.advanced_customer.bonus==100,"Production advanced conditions unchanged");
+    var eval=typeof(CafeSimulation).GetMethod("SpecialistResult",BindingFlags.Instance|BindingFlags.NonPublic);
+    var cats=sim.ImportDefinitions(sim.State);var white=cats.First(c=>c.features.Contains("white"));var other=cats.First(c=>!c.features.Contains("white"));
+    foreach(var test in new[]{new{cat=white.id,count=0,result="failure"},new{cat=white.id,count=1,result="success"},new{cat=other.id,count=1,result="failure"}})
+     Check((string)eval.Invoke(sim,new object[]{sim.State,target,test.cat,test.count,0,false,0,0})==test.result,"Production condition boundary "+test.cat+" "+test.count);
+   }
+   if(fujita){
+    Send(backend,"new_game","popularity");var sim=backend.Simulation;
+    Check(!sim.CustomerSchedule(1).Any(x=>x.customer_id==target),"Fujita absent before expansion");
+    for(int stage=1;stage<=2;stage++){
+     sim.State.popularity=sim.Rules.popularity.cap;sim.Execute("day_off");
+     Check(sim.ClearedGoalDay(stage)>0,"Normal goal settlement "+stage);
+     while(sim.GrowthWaiting){sim.Execute("resolve_growth_auto");sim.Execute("resolve_growth_batch");}
+     PrepareFujitaFixture(sim);sim.Execute(stage==1?"advance_goal":"continue_goal");
+     if(sim.State.phase=="closed")sim.Execute("next_day");PrepareFujitaFixture(sim);
+    }
+    for(int n=0;n<24 && sim.State.funds<=(ueda?16000:ishida?12500:6400);n++){
+     sim.Execute("start_business");while(sim.State.phase=="open")sim.Execute("advance_business");
+     while(sim.GrowthWaiting){sim.Execute("resolve_growth_auto");sim.Execute("resolve_growth_batch");}
+     PrepareFujitaFixture(sim);sim.Execute("next_day");PrepareFujitaFixture(sim);
+    }
+    Check(sim.State.funds>(ueda?15000:ishida?12000:6200),"Expansion funds earned by ordinary business");
+    for(int seats=3;seats<=(ueda?7:ishida?6:5);seats++){sim.Execute("expand_seats");Check(!sim.CustomerSchedule(sim.State.day+1).Any(x=>x.customer_id==target),"No Fujita with "+seats+" seats");}
+    double funds=sim.State.funds;sim.Execute("expand_seats");Check(funds-sim.State.funds==(ueda?2500:ishida?2000:1500),"Sixth seat production cost");
+    Check(!sim.CustomerSchedule(sim.State.day).Any(x=>x.customer_id==target),"No Fujita on purchase day");
+    Check(sim.CustomerSchedule(sim.State.day+1).Single(x=>x.customer_id==target).tick==(ueda?24:ishida?18:12),"Next-day tick twelve schedule");
+    // Five initial cats fill before tick twelve. Recruit the sixth via the ordinary production command, within existing housing.
+    if(ishida)sim.Execute("purchase_housing");sim.Execute("open_recruitment");var recruit=sim.RecruitmentCandidates(sim.State).First(r=>!sim.State.cats.Any(c=>c.id==r.cat.id));
+    sim.Execute("recruit_cat",catId:recruit.cat.id);Check(sim.State.cats.Count==6,"Six cats acquired through normal recruitment");if(ishida){var seventh=sim.RecruitmentCandidates(sim.State).First(r=>!sim.State.cats.Any(c=>c.id==r.cat.id));sim.Execute("recruit_cat",catId:seventh.cat.id);Check(sim.State.cats.Count==7,"Seven cats acquired through normal recruitment");}
+    if(ueda){var eighth=sim.RecruitmentCandidates(sim.State).First(r=>!sim.State.cats.Any(c=>c.id==r.cat.id));sim.Execute("recruit_cat",catId:eighth.cat.id);Check(sim.State.cats.Count==8,"Eight cats through normal recruitment");}
+    sim.Execute("purchase_waiting_area");sim.Execute("upgrade_waiting_area");Check(sim.MaxWaitTicks==sim.Rules.max_wait_ticks+sim.Rules.waiting_area_upgrade.wait_bonus,"Ordinary upgraded waiting area");
+    sim.Execute("day_off");while(sim.GrowthWaiting){sim.Execute("resolve_growth_auto");sim.Execute("resolve_growth_batch");}
+    PrepareFujitaFixture(sim);if(sim.State.phase=="closed")sim.Execute("next_day");PrepareFujitaFixture(sim);
+    Check(sim.CustomerSchedule(sim.State.day).Single(x=>x.customer_id==target).tick==(ueda?24:ishida?18:12),"Fujita ordinary current schedule");
+   }
+   if(maeda){
+    Send(backend,"new_game","popularity");var sim=backend.Simulation;
+    Check(!sim.CustomerSchedule(1).Any(x=>x.customer_id==target),"Maeda absent before expansion");
+    sim.State.popularity=sim.Rules.popularity.cap;sim.Execute("day_off");
+    while(sim.GrowthWaiting){sim.Execute("resolve_growth_auto");sim.Execute("resolve_growth_batch");}
+    if(sim.ReservationWaiting)sim.Execute("resolve_reservation",choice:"decline");sim.Execute("continue_goal");
+    if(sim.State.phase=="closed")sim.Execute("next_day");PrepareYoshidaFixture(sim);
+    for(int n=0;n<12 && sim.State.funds<=2600;n++){
+     sim.Execute("start_business");while(sim.State.phase=="open")sim.Execute("advance_business");
+     while(sim.GrowthWaiting){sim.Execute("resolve_growth_auto");sim.Execute("resolve_growth_batch");}
+     if(sim.ReservationWaiting)sim.Execute("resolve_reservation",choice:"decline");
+     sim.Execute("next_day");PrepareYoshidaFixture(sim);
+    }
+    Check(sim.State.funds>2500,"Expansion funds earned through normal business");
+    sim.Execute("expand_seats");Check(!sim.CustomerSchedule(sim.State.day+1).Any(x=>x.customer_id==target),"Three seats do not generate Maeda");
+    sim.Execute("expand_seats");Check(!sim.CustomerSchedule(sim.State.day+1).Any(x=>x.customer_id==target),"Four seats do not generate Maeda");
+    sim.Execute("expand_seats");Check(!sim.CustomerSchedule(sim.State.day).Any(x=>x.customer_id==target),"Five-seat purchase day excludes Maeda");
+    Check(sim.CustomerSchedule(sim.State.day+1).Single(x=>x.customer_id==target).tick==6,"Five-seat next-day tick six arrival");
+    sim.Execute("day_off");while(sim.GrowthWaiting){sim.Execute("resolve_growth_auto");sim.Execute("resolve_growth_batch");}
+    if(sim.ReservationWaiting)sim.Execute("resolve_reservation",choice:"decline");
+    if(sim.State.phase=="closed")sim.Execute("next_day");PrepareYoshidaFixture(sim);
+    Check(sim.CustomerSchedule(sim.State.day).Single(x=>x.customer_id==target).tick==6,"Maeda current normal schedule after purchase day");
+   }
+   if(okada){
+    Send(backend,"new_game","popularity");var sim=backend.Simulation;
+    Check(!sim.CustomerSchedule(1).Any(x=>x.customer_id==target),"Okada absent before expansion");
+    sim.State.popularity=sim.Rules.popularity.cap;sim.Execute("day_off");
+    while(sim.GrowthWaiting){sim.Execute("resolve_growth_auto");sim.Execute("resolve_growth_batch");}
+    if(sim.ReservationWaiting)sim.Execute("resolve_reservation",choice:"decline");sim.Execute("continue_goal");
+    if(sim.State.phase=="closed")sim.Execute("next_day");PrepareYoshidaFixture(sim);
+    for(int n=0;n<12 && sim.State.funds<=1600;n++){
+     sim.Execute("start_business");while(sim.State.phase=="open")sim.Execute("advance_business");
+     while(sim.GrowthWaiting){sim.Execute("resolve_growth_auto");sim.Execute("resolve_growth_batch");}
+     if(sim.ReservationWaiting)sim.Execute("resolve_reservation",choice:"decline");
+     sim.Execute("next_day");PrepareYoshidaFixture(sim);
+    }
+    Check(sim.State.funds>1500,"Expansion funds earned through normal business");
+    sim.Execute("expand_seats");Check(!sim.CustomerSchedule(sim.State.day+1).Any(x=>x.customer_id==target),"Three seats do not generate Okada");
+    sim.Execute("expand_seats");Check(!sim.CustomerSchedule(sim.State.day).Any(x=>x.customer_id==target),"Four-seat purchase day excludes Okada");
+    Check(sim.CustomerSchedule(sim.State.day+1).Single(x=>x.customer_id==target).tick==0,"Four-seat next-day opening arrival");
+    sim.Execute("day_off");while(sim.GrowthWaiting){sim.Execute("resolve_growth_auto");sim.Execute("resolve_growth_batch");}
+    if(sim.ReservationWaiting)sim.Execute("resolve_reservation",choice:"decline");
+    if(sim.State.phase=="closed")sim.Execute("next_day");PrepareYoshidaFixture(sim);
+    Check(sim.CustomerSchedule(sim.State.day).Single(x=>x.customer_id==target).tick==0,"Okada current normal schedule after purchase day");
+   }
+   if(gotoCustomer){
+    Send(backend,"new_game","popularity");var sim=backend.Simulation;
+    Check(!sim.CustomerSchedule(1).Any(x=>x.customer_id==target),"VIP locked initially");
+    // Isolated popularity seed only. All three settlements, day advancement and arrival use production commands.
+    for(int stage=1;stage<=3;stage++){
+     sim.State.popularity=sim.Rules.popularity.cap;sim.Execute("day_off");
+     Check(sim.ClearedGoalDay(stage)==stage,"VIP normal stage settlement "+stage);
+     Check(!sim.CustomerSchedule(stage).Any(x=>x.customer_id==target),"VIP absent on clear day "+stage);
+     while(sim.GrowthWaiting){sim.Execute("resolve_growth_auto");sim.Execute("resolve_growth_batch");}
+     if(sim.ReservationWaiting)sim.Execute("resolve_reservation",choice:"decline");
+     sim.Execute("continue_goal");
+     if(sim.ReservationWaiting)sim.Execute("resolve_reservation",choice:"decline");
+     if(stage<3)sim.Execute("advance_goal");
+     if(sim.State.phase=="closed")sim.Execute("next_day");PrepareYoshidaFixture(sim);
+     Check(sim.CustomerSchedule(sim.State.day).Any(x=>x.customer_id==target)==(stage==3),"VIP requires final clear and next day "+stage);
+    }
+    Check(sim.CustomerSchedule(sim.State.day).Single(x=>x.customer_id==target).tick==0,"VIP normal opening arrival");
+    Check(sim.Rules.vip_customer.feature=="calico" && sim.Rules.vip_customer.connect_count==1 && sim.Rules.vip_customer.open_up_count==1 && sim.Rules.vip_customer.simultaneous_count==1 && sim.Rules.vip_customer.bonus==400 && sim.Rules.vip_customer.popularity_bonus==10,"VIP production conditions unchanged");
+    var eval=typeof(CafeSimulation).GetMethod("SpecialistResult",Hidden);var cats=sim.ImportDefinitions(sim.State);var calico=cats.First(c=>c.features.Contains("calico"));var other=cats.First(c=>!c.features.Contains("calico"));
+    foreach(var test in new[]{new{cat=calico.id,connect=1,open=1,both=1,result="success"},new{cat=calico.id,connect=0,open=1,both=0,result="failure"},new{cat=calico.id,connect=1,open=0,both=0,result="failure"},new{cat=calico.id,connect=1,open=1,both=0,result="failure"},new{cat=other.id,connect=1,open=1,both=1,result="failure"}})
+     Check((string)eval.Invoke(sim,new object[]{sim.State,target,test.cat,test.connect,test.open,false,0,test.both})==test.result,"VIP condition boundary "+test.cat+" "+test.connect+" "+test.open+" "+test.both);
+   }
+   if(aoki){
+    Send(backend,"new_game","popularity");var sim=backend.Simulation;
+    Check(!sim.CustomerSchedule(1).Any(a=>a.customer_id==target),"Aoki locked initially");
+    sim.State.popularity=sim.Rules.popularity.cap;sim.Execute("day_off");
+    Check(sim.ClearedGoalDay(1)==1,"First clear through normal settlement");
+    Check(!sim.CustomerSchedule(1).Any(a=>a.customer_id==target),"Absent on clear day");
+    while(sim.GrowthWaiting){sim.Execute("resolve_growth_auto");sim.Execute("resolve_growth_batch");}
+    sim.Execute("continue_goal");if(sim.State.phase=="closed")sim.Execute("next_day");PrepareYoshidaFixture(sim);
+    for(int day=2;day<=8;day++)Check(sim.CustomerSchedule(day).Any(a=>a.customer_id==target)==sim.Rules.contact_customer.weekdays.Contains((sim.Rules.start_weekday+day-1)%7),"Production weekday boundary "+day);
+    while(!sim.CustomerSchedule(sim.State.day).Any(a=>a.customer_id==target)){
+     sim.Execute("day_off");while(sim.GrowthWaiting){sim.Execute("resolve_growth_auto");sim.Execute("resolve_growth_batch");}
+     if(sim.State.phase=="closed")sim.Execute("next_day");PrepareYoshidaFixture(sim);
+    }
+    Check(sim.CustomerSchedule(sim.State.day).Single(a=>a.customer_id==target).tick==0,"Aoki production opening arrival");
+    Check(sim.Rules.contact_customer.equipment=="grooming_brush" && sim.Rules.contact_customer.contact_count==3 && sim.Rules.contact_customer.bonus==160 && sim.Rules.contact_customer.popularity_bonus==3,"Production contact rules unchanged");
+    var eval=typeof(CafeSimulation).GetMethod("SpecialistResult",Hidden);string cat=sim.ImportDefinitions(sim.State).First().id;
+    foreach(var test in new[]{new{equipment=true,count=2,result="failure"},new{equipment=true,count=3,result="success"},new{equipment=false,count=3,result="failure"}})
+     Check((string)eval.Invoke(sim,new object[]{sim.State,target,cat,0,0,test.equipment,test.count,0})==test.result,"Contact service boundary "+test.equipment+" "+test.count);
+   }
+   if(nishimura){
+    Send(backend,"new_game","popularity");var sim=backend.Simulation;
+    Check(!sim.CustomerSchedule(1).Any(a=>a.customer_id==target),"Nishimura locked initially");
+    sim.State.popularity=sim.Rules.popularity.cap;sim.Execute("day_off");
+    Check(sim.ClearedGoalDay(1)==1,"First clear through normal settlement");
+    Check(!sim.CustomerSchedule(1).Any(a=>a.customer_id==target),"Absent on clear day");
+    while(sim.GrowthWaiting){sim.Execute("resolve_growth_auto");sim.Execute("resolve_growth_batch");}
+    sim.Execute("continue_goal");if(sim.State.phase=="closed")sim.Execute("next_day");PrepareYoshidaFixture(sim);
+    for(int day=2;day<=8;day++)Check(sim.CustomerSchedule(day).Any(a=>a.customer_id==target)==sim.Rules.play_customer.weekdays.Contains((sim.Rules.start_weekday+day-1)%7),"Production weekday boundary "+day);
+    while(!sim.CustomerSchedule(sim.State.day).Any(a=>a.customer_id==target)){
+     sim.Execute("day_off");while(sim.GrowthWaiting){sim.Execute("resolve_growth_auto");sim.Execute("resolve_growth_batch");}
+     if(sim.State.phase=="closed")sim.Execute("next_day");PrepareYoshidaFixture(sim);
+    }
+    Check(sim.CustomerSchedule(sim.State.day).Single(a=>a.customer_id==target).tick==0,"Nishimura production opening arrival");
+    Check(sim.Rules.play_customer.equipment=="cat_tower" && sim.Rules.play_customer.play_count==4 && sim.Rules.play_customer.bonus==180 && sim.Rules.play_customer.popularity_bonus==4,"Production play rules unchanged");
+    var eval=typeof(CafeSimulation).GetMethod("SpecialistResult",Hidden);string cat=sim.ImportDefinitions(sim.State).First().id;
+    foreach(var test in new[]{new{equipment=true,count=3,result="failure"},new{equipment=true,count=4,result="success"},new{equipment=false,count=4,result="failure"}})
+     Check((string)eval.Invoke(sim,new object[]{sim.State,target,cat,0,0,test.equipment,test.count,0})==test.result,"Play service boundary "+test.equipment+" "+test.count);
+   }
+   if(fukuda){
+    Send(backend,"new_game","popularity");var sim=backend.Simulation;
+    Check(!sim.CustomerSchedule(1).Any(a=>a.customer_id==target),"Fukuda locked initially");
+    sim.State.popularity=sim.Rules.popularity.cap;sim.Execute("day_off");
+    Check(sim.ClearedGoalDay(1)==1,"First clear through normal settlement");
+    Check(!sim.CustomerSchedule(1).Any(a=>a.customer_id==target),"Absent on clear day");
+    while(sim.GrowthWaiting){sim.Execute("resolve_growth_auto");sim.Execute("resolve_growth_batch");}
+    sim.Execute("continue_goal");if(sim.State.phase=="closed")sim.Execute("next_day");PrepareYoshidaFixture(sim);
+    for(int day=2;day<=8;day++)Check(sim.CustomerSchedule(day).Any(a=>a.customer_id==target)==sim.Rules.play_customer.quiet_weekdays.Contains((sim.Rules.start_weekday+day-1)%7),"Production weekday boundary "+day);
+    while(!sim.CustomerSchedule(sim.State.day).Any(a=>a.customer_id==target)){
+     sim.Execute("day_off");while(sim.GrowthWaiting){sim.Execute("resolve_growth_auto");sim.Execute("resolve_growth_batch");}
+     if(sim.State.phase=="closed")sim.Execute("next_day");PrepareYoshidaFixture(sim);
+    }
+    Check(sim.CustomerSchedule(sim.State.day).Single(a=>a.customer_id==target).tick==0,"Fukuda production opening arrival");
+    Check(sim.Rules.quiet_customer.equipment=="quiet_space" && sim.Rules.quiet_customer.quiet_count==3 && sim.Rules.quiet_customer.bonus==150 && sim.Rules.quiet_customer.popularity_bonus==3,"Production quiet rules unchanged");
+    var eval=typeof(CafeSimulation).GetMethod("SpecialistResult",Hidden);string cat=sim.ImportDefinitions(sim.State).First().id;
+    foreach(var test in new[]{new{equipment=true,count=2,result="failure"},new{equipment=true,count=3,result="success"},new{equipment=false,count=3,result="failure"}})
+     Check((string)eval.Invoke(sim,new object[]{sim.State,target,cat,0,0,test.equipment,test.count,0})==test.result,"Quiet service boundary "+test.equipment+" "+test.count);
+   }
+   if(sakamoto){
+    Send(backend,"new_game","popularity");var sim=backend.Simulation;
+    Check(!sim.CustomerSchedule(1).Any(x=>x.customer_id==target),"Sakamoto locked initially");
+    for(int stage=1;stage<=2;stage++){
+     sim.State.popularity=sim.Rules.popularity.cap;sim.Execute("day_off");
+     Check(sim.ClearedGoalDay(stage)==stage,"Normal settlement stage "+stage);
+     Check(!sim.CustomerSchedule(stage).Any(x=>x.customer_id==target),"Absent on stage clear day "+stage);
+     while(sim.GrowthWaiting){sim.Execute("resolve_growth_auto");sim.Execute("resolve_growth_batch");}
+     if(sim.ReservationWaiting)sim.Execute("resolve_reservation",choice:"decline");
+     sim.Execute("continue_goal");if(stage==1)sim.Execute("advance_goal");
+     if(sim.State.phase=="closed")sim.Execute("next_day");PrepareYoshidaFixture(sim);
+     if(stage==1)Check(!sim.CustomerSchedule(sim.State.day).Any(x=>x.customer_id==target),"First stage insufficient");
+    }
+    // Natural deterministic draw; wait using ordinary day commands, never force attendance.
+    for(int n=0;n<30 && !sim.CustomerSchedule(sim.State.day).Any(x=>x.customer_id==target);n++){
+     sim.Execute("day_off");while(sim.GrowthWaiting){sim.Execute("resolve_growth_auto");sim.Execute("resolve_growth_batch");}
+     if(sim.ReservationWaiting)sim.Execute("resolve_reservation",choice:"decline");
+     if(sim.State.phase=="closed")sim.Execute("next_day");PrepareYoshidaFixture(sim);
+    }
+    Check(sim.CustomerSchedule(sim.State.day).Single(x=>x.customer_id==target).tick==0,"Deterministic draw arrival tick zero");
+    Check(sim.Rules.longhair_customer.probability==.3 && sim.Rules.longhair_customer.contact_count==3 && sim.Rules.longhair_customer.bonus==120 && sim.Rules.longhair_customer.popularity_bonus==2,"Production longhair rules unchanged");
+    var eval=typeof(CafeSimulation).GetMethod("SpecialistResult",Hidden);var cats=sim.ImportDefinitions(sim.State);var longcat=cats.First(c=>c.features.Contains("long_hair"));var shortcat=cats.First(c=>!c.features.Contains("long_hair"));
+    foreach(var test in new[]{new{cat=longcat.id,count=2,result="failure"},new{cat=longcat.id,count=3,result="success"},new{cat=shortcat.id,count=3,result="failure"}})
+     Check((string)eval.Invoke(sim,new object[]{sim.State,target,test.cat,0,0,false,test.count,0})==test.result,"Production longhair boundary "+test.count+" "+test.cat);
+   }
+   if(yoshida||yamada){
+    backend.Simulation.Execute("start_popularity_challenge");
+    Check(!backend.Simulation.CustomerSchedule(1).Any(a=>a.customer_id==target),"Second-stage target locked before popularity clears");
+    for(int stage=1;stage<=2;stage++){
+     // Seed only isolated fixture popularity; settle and advance through production commands.
+     backend.Simulation.State.popularity=backend.Simulation.Rules.popularity.cap;
+     backend.Simulation.Execute("day_off");
+     Check(backend.Simulation.ClearedGoalDay(stage)==stage,"Stage "+stage+" settled by normal day_off");
+     Check(!backend.Simulation.CustomerSchedule(stage).Any(a=>a.customer_id==target),"Second-stage target absent on stage "+stage+" clear day");
+     while(backend.Simulation.GrowthWaiting){backend.Simulation.Execute("resolve_growth_auto");backend.Simulation.Execute("resolve_growth_batch");}
+     if(backend.Simulation.ReservationWaiting)backend.Simulation.Execute("resolve_reservation",choice:"decline");
+     backend.Simulation.Execute("continue_goal");
+     if(stage==1)backend.Simulation.Execute("advance_goal");
+     if(backend.Simulation.State.phase=="closed")backend.Simulation.Execute("next_day");
+     PrepareYoshidaFixture(backend.Simulation);
+     Check(backend.Simulation.CustomerSchedule(backend.Simulation.State.day).Any(a=>a.customer_id==target)==(stage==2),"Second-stage target requires second stage and following day");
+    }
+    Check(backend.Simulation.CustomerSchedule(backend.Simulation.State.day).Single(a=>a.customer_id==target).tick==(yamada?30:10),"Second-stage production arrival tick");
+    backend.Simulation.Execute("expand_seats");
+    backend.Simulation.Execute("start_business");while(backend.Simulation.State.phase=="open")backend.Simulation.Execute("advance_business");
+    while(backend.Simulation.GrowthWaiting){backend.Simulation.Execute("resolve_growth_auto");backend.Simulation.Execute("resolve_growth_batch");}
+    backend.Simulation.Execute("next_day");
+    PrepareYoshidaFixture(backend.Simulation);
+    backend.Simulation.Execute("expand_seats");backend.Simulation.Execute("expand_seats");
+   }
+   if(yamamoto||nakamura||kobayashi||kato){
+    backend.Simulation.Execute("start_popularity_challenge");
+    Check(!backend.Simulation.CustomerSchedule(1).Any(a=>a.customer_id==target),target+" locked before first popularity clear");
+    // Isolated unlocked fixture: seed popularity only, retain the production rules and settle through day_off.
+    backend.Simulation.State.popularity=backend.Simulation.Rules.popularity.cap;
+    backend.Simulation.Execute("day_off");
+    Check(backend.Simulation.ClearedGoalDay(1)==1,"Fixture first stage settled on day one");
+    Check(!backend.Simulation.CustomerSchedule(1).Any(a=>a.customer_id==target),target+" absent on clear day");
+    while(backend.Simulation.GrowthWaiting){backend.Simulation.Execute("resolve_growth_auto");backend.Simulation.Execute("resolve_growth_batch");}
+    backend.Simulation.Execute("continue_goal");
+    if(backend.Simulation.State.phase=="closed")backend.Simulation.Execute("next_day");
+    if(backend.Simulation.StoreEventWaiting)backend.Simulation.Execute("resolve_store_event",choice:backend.Simulation.CurrentStoreEvent.type=="trouble"?"patch":"decline");
+    Check(backend.Simulation.CustomerSchedule(backend.Simulation.State.day).Any(a=>a.customer_id==target),target+" scheduled only after fixture clear day");
+    backend.Simulation.Execute("expand_seats");if(nakamura||kobayashi||kato||yoshida||yamada){
+     // Earn the next expansion through one ordinary business day in this unlocked fixture.
+     backend.Simulation.Execute("start_business");while(backend.Simulation.State.phase=="open")backend.Simulation.Execute("advance_business");
+     while(backend.Simulation.GrowthWaiting){backend.Simulation.Execute("resolve_growth_auto");backend.Simulation.Execute("resolve_growth_batch");}
+     backend.Simulation.Execute("next_day");
+     if(backend.Simulation.StoreEventWaiting)backend.Simulation.Execute("resolve_store_event",choice:backend.Simulation.CurrentStoreEvent.type=="trouble"?"patch":"decline");
+     backend.Simulation.Execute("expand_seats");backend.Simulation.Execute("expand_seats");
+    }
+   }if(tanaka){backend.Simulation.Execute("day_off");while(backend.Simulation.GrowthWaiting){backend.Simulation.Execute("resolve_growth_auto");backend.Simulation.Execute("resolve_growth_batch");}if(backend.Simulation.State.phase=="closed")backend.Simulation.Execute("next_day");if(backend.Simulation.StoreEventWaiting)backend.Simulation.Execute("resolve_store_event",choice:backend.Simulation.CurrentStoreEvent.type=="trouble"?"patch":"decline");Check(backend.Simulation.State.day==2,"Second-day schedule prepared through normal commands");}if(ito||watanabe){for(int day=0;day<7 && !backend.Simulation.CustomerSchedule(backend.Simulation.State.day).Any(a=>a.customer_id==target);day++){backend.Simulation.Execute("day_off");while(backend.Simulation.GrowthWaiting){backend.Simulation.Execute("resolve_growth_auto");backend.Simulation.Execute("resolve_growth_batch");}if(backend.Simulation.State.phase=="closed")backend.Simulation.Execute("next_day");if(backend.Simulation.StoreEventWaiting)backend.Simulation.Execute("resolve_store_event",choice:backend.Simulation.CurrentStoreEvent.type=="trouble"?"patch":"decline");}Check(backend.Simulation.CustomerSchedule(backend.Simulation.State.day).Any(a=>a.customer_id==target),"Target scheduled after normal day progression");}if(sakamoto||fukuda||nishimura||aoki||gotoCustomer||okada)backend.Simulation.Execute("set_auto_assignment",choice:"manual");backend.Simulation.Execute("start_business");if(sakamoto||fukuda||nishimura||aoki||gotoCustomer||okada){Check(backend.Simulation.State.queue.Contains(target),"Sakamoto normally arrived in queue");backend.Simulation.Execute("assign_service",catId:backend.Simulation.AssignmentCats.First().id,seatId:"seat-"+(backend.Simulation.AssignmentFreeSeats.First()+1),customerId:target);backend.Simulation.Execute("set_auto_assignment",choice:"automatic");}if(nakamura||kobayashi||kato||yoshida||yamada){
+    while(backend.Simulation.State.tick<(yamada?30:yoshida?10:kato?28:kobayashi?20:12))backend.Simulation.Execute("advance_business");
+    backend.Simulation.Execute("set_auto_assignment",choice:"manual");backend.Simulation.Execute("advance_business");
+    Check(backend.Simulation.State.queue.Contains(target),"Target arrived at production arrival tick");
+    backend.Simulation.Execute("assign_service",catId:backend.Simulation.AssignmentCats.First().id,seatId:"seat-"+(backend.Simulation.AssignmentFreeSeats.First()+1),customerId:target);
+    backend.Simulation.Execute("set_auto_assignment",choice:"automatic");
+   }if(maeda||fujita){
+    // Some weekdays fill all cats before tick 6. Keep production arrival/queue rules and try subsequent ordinary business days.
+    for(int attempt=0;attempt<7;attempt++){
+     while(backend.Simulation.State.phase=="open" && !backend.View().seats.Any(x=>x.customer_id==target))backend.Simulation.Execute("advance_business");
+     if(backend.View().seats.Any(x=>x.customer_id==target))break;
+     while(backend.Simulation.GrowthWaiting){backend.Simulation.Execute("resolve_growth_auto");backend.Simulation.Execute("resolve_growth_batch");}
+     if(fujita)PrepareFujitaFixture(backend.Simulation);else PrepareYoshidaFixture(backend.Simulation);backend.Simulation.Execute("next_day");if(fujita)PrepareFujitaFixture(backend.Simulation);else PrepareYoshidaFixture(backend.Simulation);backend.Simulation.Execute("start_business");
+    }
+   }for(int i=0;i<40 && backend.Simulation.State.phase=="open" && !backend.View().seats.Any(s=>(takahashi||tanaka||ito||watanabe||yamamoto||nakamura||kobayashi||kato||yoshida||yamada||fujiwara||sakamoto||fukuda||nishimura||aoki||gotoCustomer||okada||maeda||fujita)?s.customer_id==target:!string.IsNullOrEmpty(s.customer_id));i++)backend.Simulation.Execute("advance_business");File.WriteAllText(Path.Combine(output,"before-save-state.json"),JsonUtility.ToJson(backend.Simulation.State,true));Check(!(takahashi||tanaka||ito||watanabe||yamamoto||nakamura||kobayashi||kato||yoshida||yamada||fujiwara||sakamoto||fukuda||nishimura||aoki||gotoCustomer||okada||maeda||fujita) || backend.View().seats.Any(s=>s.customer_id==target),"Selected customer seated before save");File.WriteAllText(Path.Combine(output,"seated.json"),JsonUtility.ToJson(backend.View(),true));Send(backend,"save_game");var resumed=new LocalCafeBackend(Path.Combine(output,"save"));Send(resumed,"load_game");Check(resumed.View().seats.Select(s=>s.customer_id).SequenceEqual(backend.View().seats.Select(s=>s.customer_id)),"Save/resume customer identities");Check(!(takahashi||tanaka||ito||watanabe||yamamoto||nakamura||kobayashi||kato||yoshida||yamada||fujiwara||sakamoto||fukuda||nishimura||aoki||gotoCustomer||okada||maeda||fujita) || resumed.View().seats.Any(s=>s.customer_id==target),"Selected customer seated after resume");
+   string beforeSeats=JsonUtility.ToJson(backend.Simulation.State);Check(HumanPortraitResources.Resolve("guest-24")==HumanPortraitResources.Placeholder(),"Unregistered customer");if(takahashi||tanaka||ito||watanabe||yamamoto||nakamura||kobayashi||kato||yoshida||yamada||fujiwara||sakamoto||fukuda||nishimura||aoki||gotoCustomer||okada||maeda||fujita){var field=typeof(HumanPortraitResources).GetField("pack",BindingFlags.Static|BindingFlags.NonPublic);var pack=(HumanPortraitPack)field.GetValue(null);var row=pack.people.First(r=>r.game_id==target);string original=row.image;try{row.image="people/"+new string('0',64)+".png";Check(HumanPortraitResources.Resolve(target)==HumanPortraitResources.Placeholder(),"Missing image fallback");}finally{row.image=original;}Check(HumanPortraitResources.Resolve(target)==textures[Array.IndexOf(ids,target)],"Image restored after missing fixture");}SceneManager.LoadScene("CatCafePythonState");yield return new WaitForSecondsRealtime(2);var client=FindObjectOfType<PythonStateClient>();var screen=client.GetComponent<PythonServiceScreen>();Screen.SetResolution(1024,768,false);yield return new WaitForSecondsRealtime(.6f);
+   foreach(int width in new[]{1280,1024}){
+    Screen.SetResolution(width,width==1280?800:768,false);yield return new WaitForSecondsRealtime(.4f);
+    foreach(var id in ids){var view=backend.View();var seat=view.seats.First(s=>!string.IsNullOrEmpty(s.customer_id));seat.customer_id=id;seat.customer_name=id=="expanded-guest-5"?"上田さん":id=="guest-1"?"佐藤さん":id=="guest-2"?"鈴木さん":id=="guest-3"?"高橋さん":id=="guest-4"?"田中さん":id=="guest-5"?"伊藤さん":id=="guest-6"?"渡辺さん":id=="guest-7"?"山本さん":id=="guest-8"?"中村さん":id=="guest-9"?"小林さん":id=="guest-10"?"加藤さん":id=="guest-11"?"吉田さん":id=="guest-12"?"山田さん":id=="advanced-white"?"藤原さん":id=="advanced-longhair"?"坂本さん":id=="advanced-quiet"?"福田さん":id=="advanced-play"?"西村さん":id=="advanced-contact"?"青木さん":id=="expanded-guest-4"?"石田さん":id=="expanded-guest-3"?"藤田さん":id=="expanded-guest-2"?"前田さん":id=="expanded-guest"?"岡田さん":id=="vip-calico"?"後藤さん":"森さん";Apply(client,view);screen.ShowSeats();yield return null;var card=screen.seatContent.GetComponentsInChildren<PythonCatCard>().First(c=>c.customerIcon.activeSelf);Check(card.customerIcon.GetComponentInChildren<RawImage>().texture==HumanPortraitResources.Resolve(id),"Actual seat "+id);if((!fujiwara&&!sakamoto&&!fukuda&&!nishimura&&!aoki&&!gotoCustomer&&!okada&&!maeda&&!fujita)||id==target)yield return Shot("seat-"+id+"-"+width);seat.customer_id="unknown";screen.Apply(view);Check(card.customerIcon.GetComponentInChildren<RawImage>().texture==HumanPortraitResources.Placeholder(),"Seat replacement fallback");seat.customer_id=null;screen.Apply(view);Check(!card.customerIcon.activeSelf,"Empty seat");}
+   }
+   if(yoshida||yamada||fujiwara||sakamoto||fukuda||nishimura||aoki||gotoCustomer||okada||maeda||fujita){foreach(int width in new[]{1280,1024}){Screen.SetResolution(width,width==1280?800:768,false);yield return new WaitForSecondsRealtime(.4f);Apply(client,resumed.View());screen.ShowSeats();yield return Shot("actual-seated-"+(ueda?"ueda":ishida?"ishida":fujita?"fujita":maeda?"maeda":okada?"okada":gotoCustomer?"goto":aoki?"aoki":nishimura?"nishimura":fukuda?"fukuda":sakamoto?"sakamoto":fujiwara?"fujiwara":yamada?"yamada":"yoshida")+"-"+width);}}
+   Check(beforeSeats==JsonUtility.ToJson(backend.Simulation.State),"Seat rendering changed gameplay or saved text");var trust=new LocalCafeBackend(Path.Combine(output,"trust"));
+   if(fujiwara||sakamoto||fukuda||nishimura||aoki||gotoCustomer||okada||maeda||fujita){
+    // Suspension history is a fixture; eligibility and presentation run the production code.
+    var d=new CafeDiscontent{customer_id=target};
+    for(int i=0;i<trust.Simulation.Rules.trust.warning_suspensions;i++)d.suspensions.Add(new CafeSuspension{day=i+1,until=i+2});
+    trust.Simulation.State.discontent.Add(d);trust.Simulation.PresentCustomerTrust();
+    Check(trust.Simulation.State.trust_events.Single().customer_id==target,"Fujiwara eligible for existing trust warning");
+   }else trust.Simulation.State.trust_events.Add(new CafeTrustEvent{id="icon-fixture",customer_id=target,status="waiting",day=1,suspensions=1});CafeBackends.UseLocal(trust);Apply(client,trust.View());var owner=client.GetComponent<PythonCustomerTrustPanel>();var ui=owner.Dialogue;ui.Apply(trust.View(),owner);Check(ui.OpenPending(),"Trust open");ui.Next();Check((Texture2D)typeof(TrustConversationPanel).GetMethod("PortraitTexture",Hidden).Invoke(ui,new object[]{""})==HumanPortraitResources.Resolve(target),"Trust customer binding");string before=JsonUtility.ToJson(trust.Simulation.State);
+   foreach(int width in new[]{1280,1024}){Screen.SetResolution(width,width==1280?800:768,false);yield return new WaitForSecondsRealtime(.4f);yield return Shot("trust-"+target+"-"+width);}ui.Close();
+   var canvas=client.GetComponentInChildren<Canvas>();var host=new GameObject("Icon replay fixture",typeof(RectTransform),typeof(CanvasRenderer),typeof(Image));host.transform.SetParent(canvas.transform,false);var replay=client.gameObject.AddComponent<ReplayConversationPanel>();
+   foreach(int width in new[]{1280,1024}){Screen.SetResolution(width,width==1280?800:768,false);yield return new WaitForSecondsRealtime(.4f);replay.Play(new CafeReplayEntry{conversation_id=CafeReservationDialogue.Id+".response",branch_id="accepted",title="特別予約",customer_id="reservation-longhair",cat_name="森さん",personality="特別予約のお客さん",lines=new[]{new CafeConversationLine("森さん","予約の条件を確認させてください。")}},host,owner.title.font,()=>{});yield return null;replay.Next();Check((Texture2D)typeof(ReplayConversationPanel).GetMethod("PortraitTexture",Hidden).Invoke(replay,new object[]{""})==textures[2],"Reservation Extra identity");yield return Shot("reservation-extra-mori-"+width);replay.Close();}
+   Check(before==JsonUtility.ToJson(trust.Simulation.State),"Rendering/replay changed gameplay");
+   replay.Play(new CafeReplayEntry{conversation_id=CafeTrustDialogue.Id+".response",branch_id="recover",title="旧回想",cat_name="鈴木さん",lines=new[]{new CafeConversationLine("案内","旧記録")}},host,owner.title.font,()=>{});Check((Texture2D)typeof(ReplayConversationPanel).GetMethod("PortraitTexture",Hidden).Invoke(replay,new object[]{""})==HumanPortraitResources.Placeholder(),"Old replay guessed identity");
+   var reservation=client.GetComponent<ReservationConversationPanel>()??client.gameObject.AddComponent<ReservationConversationPanel>();Check((Texture2D)typeof(ReservationConversationPanel).GetMethod("PortraitTexture",Hidden).Invoke(reservation,new object[]{""})==textures[2],"Reservation portrait lookup");
+  }
+ }
+}

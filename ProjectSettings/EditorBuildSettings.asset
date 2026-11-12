@@ -1,0 +1,14 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1045 &1
+EditorBuildSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Scenes/CatCafeTitle.unity
+    guid: 9598478199572384a9a82c4392e5049f
+  - enabled: 1
+    path: Assets/Scenes/CatCafePythonState.unity
+    guid: 4a2770e3db062494899baff4af6e9e0f
+  m_configObjects: {}
