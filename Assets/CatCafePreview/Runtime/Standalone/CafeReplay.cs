@@ -109,7 +109,7 @@ namespace CatCafePreview.Standalone
             sim.ReplayActions.Clear();switch(op.kind)
             {
                 case "start_autoplay":sim.StartAutoplay(op.objective,op.mode,op.days);break;
-                case "step_autoplay":return sim.StepAutoplay();
+                case "step_autoplay":sim.LegacyAutoplayEvents=!op.autoplay_events;return sim.StepAutoplay();
                 case "pause_autoplay":sim.PauseAutoplay();break;
                 case "resume_autoplay":sim.ResumeAutoplay();break;
                 case "stop_autoplay":sim.CancelAutoplay();break;
